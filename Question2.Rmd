@@ -1,0 +1,1064 @@
+---
+title: 'STA5077Z: Assignment 1: Question 2'
+author: "Natalie Alexander"
+date: "2023-09-23"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+rm(list=ls())
+
+```
+
+# 1. Libraries
+
+```{r, message=FALSE, echo=TRUE}
+
+#load in libraries
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(knitr)
+library(magick)
+library(repmod)
+library(ggplot2)
+library(corrplot)
+library(openxlsx)
+library(stats)
+library(arules)
+library(caret)
+library(rpart)
+library(e1071)
+library(randomForest)
+library(grid)
+library("arulesViz")
+```
+
+# 2. Data
+
+```{r}
+#################################Read in Data###################################
+
+#set path to access data files
+
+##CHANGE PATH ACCORDING TO WHERE THE DATA FILE IS STORED ON YOUR COMPUTER!
+path = "C:\\Users\\natal\\OneDrive - University of Cape Town\\UCT\\Unsupervised\\Assignments\\Zazo_Assignment1"
+
+##CHANGE PATH ACCORDING TO WHERE THE TABLES AND FIGURES WILL BE SAVED ON YOUR COMPUTER!
+path_to_figures_tables = "C:\\Users\\natal\\OneDrive - University of Cape Town\\UCT\\Unsupervised\\Assignments\\Zazo_Assignment1\\submit\\Question2\\figures_tables"
+
+#read in data
+cad_data = read.xlsx(paste0(path, "\\CAD dataset.xlsx"), sheet = 2)
+
+
+
+```
+
+
+# 3. Exploratory Data Analysis and Data Pre-processing
+
+## 3.1. Inspect data
+
+```{r}
+############################Inspect data dimensions#############################
+
+#check dimensions of data
+##dimensions of data set:
+dim(cad_data) #303 rows by 56 columns data matrix
+
+##number of columns:
+ncol(cad_data) #56 columns
+
+##number of rows:
+nrow(cad_data) #303 rows
+
+##########################check for missing data################################
+cad_data[!complete.cases(cad_data),]
+
+
+##############################Inspect column names##############################
+
+#column names
+colnames(cad_data)
+
+```
+
+## 3.2. Head and tail of data
+
+```{r}
+##############################Inspect data #####################################
+
+#check head of data
+(head_of_cad_data = head(cad_data))
+
+#save table data
+repmod::make_word_table(head_of_cad_data, 
+                        paste0(path_to_figures_tables, 
+                               "\\head_of_cad_data"), 
+                        info = NULL, use.rownames = TRUE)
+
+
+
+#check tail of data
+(tail_of_cad_data = tail(cad_data))
+
+#save table data
+repmod::make_word_table(tail_of_cad_data, 
+                        paste0(path_to_figures_tables, 
+                               "\\tail_of_cad_data"), 
+                        info = NULL, use.rownames = TRUE)
+```
+
+
+## 3.3. Data types
+
+```{r}
+########################Check data types of data################################
+
+str(cad_data)
+
+########################Convert Yes/No classes to binary#########################
+
+cad_data[,"Obesity"] = ifelse(cad_data[,"Obesity"] == "Y", 1, 0)
+cad_data[,"CRF"] = ifelse(cad_data[,"CRF"] == "Y", 1, 0)
+cad_data[,"CVA"] = ifelse(cad_data[,"CVA"] == "Y", 1, 0)
+cad_data[,"Airway.disease"] = ifelse(cad_data[,"Airway.disease"] == "Y", 1, 0)
+cad_data[,"Thyroid.Disease"] = ifelse(cad_data[,"Thyroid.Disease"] == "Y", 1, 0)
+cad_data[,"CHF"] = ifelse(cad_data[,"CHF"] == "Y", 1, 0)
+cad_data[,"DLP"] = ifelse(cad_data[,"DLP"] == "Y", 1, 0)
+cad_data[,"Weak.Peripheral.Pulse"] = ifelse(cad_data[,"Weak.Peripheral.Pulse"] == "Y", 1, 0)
+cad_data[,"Lung.rales"] = ifelse(cad_data[,"Lung.rales"] == "Y", 1, 0)
+cad_data[,"Systolic.Murmur"] = ifelse(cad_data[,"Systolic.Murmur"] == "Y", 1, 0)
+cad_data[,"Diastolic.Murmur"] = ifelse(cad_data[,"Diastolic.Murmur"] == "Y", 1, 0)
+cad_data[,"Dyspnea"] = ifelse(cad_data[,"Dyspnea"] == "Y", 1, 0)
+cad_data[,"Atypical"] = ifelse(cad_data[,"Atypical"] == "Y", 1, 0)
+cad_data[,"Nonanginal"] = ifelse(cad_data[,"Nonanginal"] == "Y", 1, 0)
+cad_data[,"Exertional.CP"] = ifelse(cad_data[,"Exertional.CP"] == "Y", 1, 0)
+cad_data[,"LowTH.Ang"] = ifelse(cad_data[,"LowTH.Ang"] == "Y", 1, 0)
+cad_data[,"LVH"] = ifelse(cad_data[,"LVH"] == "Y", 1, 0)
+cad_data[,"Poor.R.Progression"] = ifelse(cad_data[,"Poor.R.Progression"] == "Y", 1, 0)
+
+###################Change categorical variables to factors######################
+
+#independent variables
+#convert categorical to factors
+cad_data[,"Sex"] = as.factor(cad_data[,"Sex"])
+cad_data[,"Function.Class"] = as.factor(cad_data[,"Function.Class"])
+cad_data[,"Region.RWMA"] = as.factor(cad_data[,"Region.RWMA"])
+cad_data[,"VHD"] = as.factor(cad_data[,"VHD"])
+cad_data[,"BBB"] = as.factor(cad_data[,"BBB"])
+
+
+#convert binary variables to factors
+cad_data[,"DM"] = as.factor(cad_data[,"DM"])
+cad_data[,"HTN"] = as.factor(cad_data[,"HTN"])
+cad_data[,"Current.Smoker"] = as.factor(cad_data[,"Current.Smoker"])
+cad_data[,"EX-Smoker"] = as.factor(cad_data[,"EX-Smoker"])
+cad_data[,"FH"] = as.factor(cad_data[,"FH"])
+cad_data[,"Obesity"] = as.factor(cad_data[,"Obesity"])
+cad_data[,"CRF"] = as.factor(cad_data[,"CRF"])
+cad_data[,"CVA"] = as.factor(cad_data[,"CVA"])
+cad_data[,"Airway.disease"] = as.factor(cad_data[,"Airway.disease"])
+cad_data[,"Thyroid.Disease"] = as.factor(cad_data[,"Thyroid.Disease"])
+cad_data[,"CHF"] = as.factor(cad_data[,"CHF"])
+cad_data[,"DLP"] = as.factor(cad_data[,"DLP"])
+cad_data[,"Edema"] = as.factor(cad_data[,"Edema"])
+cad_data[,"Weak.Peripheral.Pulse"] = as.factor(cad_data[,"Weak.Peripheral.Pulse"])
+cad_data[,"Lung.rales"] = as.factor(cad_data[,"Lung.rales"])
+cad_data[,"Systolic.Murmur"] = as.factor(cad_data[,"Systolic.Murmur"])
+cad_data[,"Diastolic.Murmur"] = as.factor(cad_data[,"Diastolic.Murmur"])
+cad_data[,"Typical.Chest.Pain"] = as.factor(cad_data[,"Typical.Chest.Pain"])
+cad_data[,"Dyspnea"] = as.factor(cad_data[,"Dyspnea"])
+cad_data[,"Atypical"] = as.factor(cad_data[,"Atypical"])
+cad_data[,"Nonanginal"] = as.factor(cad_data[,"Nonanginal"])
+cad_data[,"Exertional.CP"] = as.factor(cad_data[,"Exertional.CP"])
+cad_data[,"LowTH.Ang"] = as.factor(cad_data[,"LowTH.Ang"])
+cad_data[,"Q.Wave"] = as.factor(cad_data[,"Q.Wave"])
+cad_data[,"St.Elevation"] = as.factor(cad_data[,"St.Elevation"])
+cad_data[,"St.Depression"] = as.factor(cad_data[,"St.Depression"])
+cad_data[,"Tinversion"] = as.factor(cad_data[,"Tinversion"])
+cad_data[,"LVH"] = as.factor(cad_data[,"LVH"])
+cad_data[,"Poor.R.Progression"] = as.factor(cad_data[,"Poor.R.Progression"])
+
+################################################################################
+
+#convert dependent variable to factor
+cad_data[,"Cath"] = as.factor(cad_data[,"Cath"])
+
+################################################################################
+
+#recheck data types
+str(cad_data)
+
+```
+
+## 3.4. Summary statistics for numeric independent variables
+
+```{r}
+#################################summary data###################################
+
+#get summary stats
+summary_stats = t(data.frame(do.call(cbind, 
+                                           lapply(cad_data, summary)
+                                           )))
+for (row in 1:nrow(summary_stats)) { #for variable in summary stats dataframe...
+  if (is.numeric(cad_data[, row]) == TRUE) { #if variable is numeric ...
+    summary_stats[row,] = round(as.numeric(summary_stats[row,]), 3) #round off
+  }
+  else { #else if variable is categorical jump to next variable
+    next
+  }
+}
+
+################################################################################
+#report on summary stats of numeric variables
+
+#empty vector
+summary_stats_of_numeric = c()
+
+#create data frame of summary stats of numeric variables
+for (row in 1:nrow(summary_stats)) {  #for variable in summary stats data frame...
+  if (is.numeric(cad_data[, row]) == TRUE) { #if variable is numeric ...
+    
+    #append column as row to dataframe
+    summary_stats_of_numeric = rbind(summary_stats_of_numeric, summary_stats[row, ])
+  }
+}
+
+#####################additional summary statistics##############################
+
+#add sd and var columns to summary stats table
+std = c()
+variance = c()
+
+##standard deviation
+for (col in 1:ncol(cad_data)) {  #for each column in the cad data set...
+  if (is.numeric(cad_data[, col]) == TRUE) { #if variable is numeric...
+    std[col] = round(sd(cad_data[, col]), 3) #calc. the standard deviation...
+  }
+  else { #else if categorical...
+    next #pass
+    
+  }
+}
+
+#remove NAs of categorical variables
+std = na.omit(std)
+
+################################################################################
+
+##variance
+for (col in 1:ncol(cad_data)) {   #for each column in the cad data set...
+  if (is.numeric(cad_data[, col]) == TRUE) {   #if variable is numeric...
+    variance[col] = round(var(cad_data[, col]), 3)  #calc. the variance
+  }
+  else { #else if categorical
+    next #pass
+    
+  }
+}
+
+
+#remove NAs of categorical variables
+variance = na.omit(variance)
+
+
+##append standard deviation and variance to summary statistics data frame
+summary_stats = cbind(summary_stats_of_numeric, variance, std)
+
+################################################################################
+
+#assign row names to numeric variables date frame
+colnames_of_numeric_var = c()
+for (col in 1:ncol(cad_data)) {   #for each column in the cad data set...
+  if (is.numeric(cad_data[, col]) == TRUE) {   #if variable is numeric...
+    
+    #append variable name to list
+   colnames_of_numeric_var = c(colnames_of_numeric_var, colnames(cad_data)[col])  
+  }
+  else { #else if categorical...
+    next #pass
+    
+  }
+}
+
+#row names of dataframe
+rownames(summary_stats) = colnames_of_numeric_var
+
+#save table data
+repmod::make_word_table(summary_stats, 
+                        paste0(path_to_figures_tables, 
+                               "\\summary_stats"), 
+                        info = NULL, 
+                        use.rownames = TRUE)
+
+```
+
+
+## 3.5. Box plots, bar plots and histograms showing distribution of observations for each variable
+
+```{r}
+
+num = 0 #counter
+
+#Boxplot of numeric independent variables
+par(mfrow=c(1, 3))
+for (col in 1:ncol(cad_data)) {   #for each column in the cad data set...
+  if (is.numeric(cad_data[, col]) == TRUE) {   #if variable is numeric...
+    num = num + 1
+    boxplot(cad_data[, col], main=paste0(num, ". ", colnames(cad_data)[col]),
+            col="lightgreen") #plot boxplot
+  }
+  else { #else if categorical variable...
+    next #pass
+  }
+}
+
+
+################################################################################
+
+#Histograms of numeric independent variables
+
+#counter
+numeric_counter = 0
+
+#hisograms
+par(mfrow=c(1, 3), pty="s")
+for (col in 1:ncol(cad_data)) {   #for each column in the cad data set...
+  if (is.numeric(cad_data[, col]) == TRUE) {   #if variable is numeric...
+    numeric_counter = numeric_counter  + 1
+    hist(cad_data[, col], main=paste0(numeric_counter, ". ", 
+                                      colnames(cad_data)[col]),
+         col="lightblue", xlab=colnames(cad_data)[col])  # plot histogram
+  }
+  else {  #else if categorical variable...
+    next #pass
+  }
+}
+
+#################################################################################
+
+#Bar plots of categorical variables
+
+#counter
+categor_counter = 0
+
+#bar plots
+par(mfrow=c(1, 3), pty="s")
+for (col in 1:ncol(cad_data)) {   #for each column in the cad data set...
+  if (is.numeric(cad_data[, col]) == TRUE) {   #if variable is numeric...
+    next #pass
+  }
+  else {  #else if categorical variable...
+    
+    #count of variable
+    categor_counter = categor_counter + 1
+    
+    #table summary of counts for each category
+    tab = table(cad_data[, col])
+    
+    #barplot
+    bp = barplot(tab, 
+            main=paste0(categor_counter, ". ", colnames(cad_data)[col]),
+            col="pink", ylab="Frequency",
+            ylim=c(0, max(tab)*1.3), xlab="class", las=2)
+    text(bp, tab, labels=tab, pos=3)
+
+  }
+}
+
+
+```
+
+
+
+
+## 3.6. Correlation
+
+```{r}
+
+#generate correlation matrix
+
+##empty vector
+numeric_variables = c()  
+
+for (col in 1:ncol(cad_data)) {   #for each column in the cad data set...
+  if (is.numeric(cad_data[, col]) == TRUE) {   #if variable is numeric...
+    
+    #append numeric variable to data frame
+    numeric_variables = cbind(numeric_variables, cad_data[,col])
+  }
+  else { #else if categorical variable...
+    next #pass
+  }
+}
+
+#add column names to data frame
+colnames(numeric_variables) = c("Age", "Weight", "Length", "BMI",
+                               "BP", "PR", "FBS", "CR", "TG", "LDL", "HDL", "BUN", 
+                               "ESR", "HB", "K", "Na", "WBC", "Lymph",  "Neut", 
+                               "PLT", "EF-TTE")
+
+#save image
+png(paste0(path_to_figures_tables, "\\cor_plot.png"))
+
+#correlation matrix
+cor_matrix_of_numeric_var = cor(numeric_variables,  method="pearson") 
+
+#Correlation plot
+(corrplot::corrplot(cor_matrix_of_numeric_var, tl.cex=0.9, type="upper")) 
+
+dev.off()
+
+################################################################################
+
+#Which redundant variables should be removed?
+caret::findCorrelation(cor(numeric_variables), cutoff=0.7) 
+
+#remove "Weight" and "Lymph"
+cad_data = cad_data %>% subset(select=-c(Weight, Lymph))
+
+#number of indep variables left
+ncol(cad_data)-1
+
+```
+
+## 3.7 Removing constant categorical/binary independent variables
+
+```{r}
+#also remove Exertional.CP because all records in 1 class
+cad_data = cad_data %>% subset(select=-c(Exertional.CP)) 
+
+#number of indep variables left
+ncol(cad_data)-1
+
+```
+
+\newpage
+
+# 4. Discretization
+
+```{r}
+
+#CR
+cad_data$CR = as.factor(ifelse(cad_data$CR < 0.7, "Low", ifelse(cad_data$CR >=0.7 & cad_data$CR<=1.5, "Normal", "High")))
+
+#FBS
+cad_data$FBS = as.factor(ifelse(cad_data$FBS < 70, "Low", ifelse(cad_data$FBS >=70 & cad_data$FBS<=105, "Normal", "High")))
+
+#LDL
+cad_data$LDL = as.factor(ifelse(cad_data$LDL <= 130, "Normal", "High"))
+
+#HDL
+cad_data$HDL = as.factor(ifelse(cad_data$HDL < 35, "Low", "Normal"))
+
+#BUN
+cad_data$BUN = as.factor(ifelse(cad_data$BUN < 7, "Low", ifelse(cad_data$BUN >=7 & cad_data$BUN<=20, "Normal", "High")))
+
+#ESR
+cad_data$ESR = as.factor(ifelse(cad_data$Sex == "Male" & cad_data$ESR <= cad_data$Age/2, "Normal", 
+                  ifelse(cad_data$Sex == "Fmale" & cad_data$ESR <= cad_data$Age/2 + 5, "Normal", 
+                         ifelse(cad_data$Sex == "Male" & cad_data$ESR > cad_data$Age/2, "High", 
+                                ifelse(cad_data$Sex == "Fmale" & cad_data$ESR > cad_data$Age/2 + 5, "High", "")))))
+
+
+#HB
+cad_data$HB = as.factor(ifelse(cad_data$Sex == "Male" & cad_data$HB < 14, "Low", 
+                  ifelse(cad_data$Sex == "Fmale" & cad_data$HB < 12.5, "Low", 
+                         ifelse(cad_data$Sex == "Male" & cad_data$HB >= 14 & cad_data$HB <= 17 , "Normal", 
+                                ifelse(cad_data$Sex == "Fmale" & cad_data$HB >= 12.5 & cad_data$HB <= 15 , "Normal",
+                                
+                                ifelse(cad_data$Sex == "Male" & cad_data$HB > 17 , "High", 
+                                ifelse(cad_data$Sex == "Fmale" & cad_data$HB > 15  , "High", "")))))))
+
+
+#K
+cad_data$K = as.factor(ifelse(cad_data$K < 3.8, "Low", ifelse(cad_data$K >=3.8 & cad_data$K<=5.6, "Normal", "High")))
+
+#Na
+cad_data$Na = as.factor(ifelse(cad_data$Na < 136, "Low", ifelse(cad_data$Na >=136 & cad_data$Na<=146, "Normal", "High")))
+
+#WBC
+cad_data$WBC = as.factor(ifelse(cad_data$WBC < 4000, "Low", ifelse(cad_data$WBC >=4000 & cad_data$WBC<=11000, "Normal", "High")))
+
+#PLT
+cad_data$PLT = as.factor(ifelse(cad_data$PLT < 150, "Low", ifelse(cad_data$PLT >=150 & cad_data$PLT <=450, "Normal", "High")))
+
+#EF
+cad_data$`EF-TTE` = as.factor(ifelse(cad_data$`EF-TTE` <= 50, "Low","Normal"))
+
+#Region with RWMA
+cad_data$Region.RWMA = as.factor(ifelse(cad_data$Region.RWMA == 0, "Normal","High"))
+
+#Age
+cad_data$Age = as.factor(ifelse(cad_data$Sex == "Male" & cad_data$Age <= 45, "Normal", 
+                  ifelse(cad_data$Sex == "Fmale" & cad_data$Age <= 55, "Normal", 
+                         ifelse(cad_data$Sex == "Male" & cad_data$Age > 45, "High", 
+                                ifelse(cad_data$Sex == "Fmale" & cad_data$Age > 55, "High",
+                                       "")))))
+
+
+#BP
+cad_data$BP = as.factor(ifelse(cad_data$BP < 90, "Low", ifelse(cad_data$BP >=90 & cad_data$BP <=140, "Normal", "High")))
+
+#Pulse rate
+cad_data$PR = as.factor(ifelse(cad_data$PR < 60, "Low", ifelse(cad_data$PR >=60 & cad_data$PR <=100, "Normal", "High")))
+
+#TG
+cad_data$TG = as.factor(ifelse(cad_data$TG <= 200, "Normal", "High"))
+
+#Function class
+cad_data$Function.Class =  as.factor(ifelse(cad_data$Function.Class == 1, "Normal", "High"))
+
+################################################################################
+
+#Neut
+
+cad_data$Neut =  as.factor(ifelse(cad_data$Neut < 40, "Low",
+                                            ifelse(cad_data$Neut >= 40 & cad_data$Neut <= 60, "Normal", "High")))
+                                                   
+
+################################################################################
+
+#BMI
+
+cad_data$BMI = as.factor(ifelse(cad_data$BMI < 18.5, "Underweight", 
+                                ifelse(cad_data$BMI >=18.5 & cad_data$BMI<25, "Healthy", 
+                                       ifelse(cad_data$BMI >= 25 & cad_data$BMI < 30, "Overweight",
+                                              "Obesity"))))
+
+# If your BMI is less than 18.5, it falls within the underweight range.
+# If your BMI is 18.5 to <25, it falls within the healthy weight range.
+# If your BMI is 25.0 to <30, it falls within the overweight range.
+# If your BMI is 30.0 or higher, it falls within the obesity range.
+
+################################################################################
+
+#Length
+
+cad_data$Length = as.factor(ifelse(cad_data$Length  < 160, "Length < 160 ", 
+                                ifelse(cad_data$Length  >=160 & cad_data$Length <180, "160 ≤ Length < 180",
+                                       "Length ≥ 180")))
+
+```
+
+
+\newpage
+
+# 5. Stratified sampling
+
+```{r}
+
+
+## Change column names to be more readable
+colnames(cad_data)[8] = "Ex.Smoker"
+colnames(cad_data)[50] = "EF"
+
+
+##class imbalance observed
+table(cad_data$Cath)
+
+##ensure balanced data set by downsampling majority class of dependent variable
+set.seed(123)
+cad_data <- data.frame(downSample(x = cad_data[, -which(names(cad_data) == "Cath")], 
+                                  y = cad_data$Cath))
+colnames(cad_data)[53] = "Cath"
+
+##check that classes are balanced
+cad_data$Cath  %>% summary()
+
+```
+
+
+\newpage
+
+# 6. Feature selection
+
+```{r}
+
+#variable selection using svm
+
+##empty vector
+df =c()
+
+##convert x-data to numeric
+for (col in 1:ncol(cad_data)) {
+  df = cbind(df, as.numeric(cad_data[,col]))
+}
+
+##convert data frame to data frame object
+df = data.frame(df)
+
+##remove numeric y-data
+df = df %>% subset(select=-c(X53))
+
+##append factor y-data
+df = cbind(df, cad_data[, "Cath"])
+
+##set column names to df
+colnames(df) = colnames(cad_data)
+
+##fit svm model
+set.seed(123) #set seed to get the same results
+fit = svm(Cath ~ ., df, scale=F,type = 'C-classification',
+                 kernel = 'linear')
+
+## get model coefficients
+coefs = coef(fit)
+
+##get variables  where coefficients < 0.6
+svm.rm = c()
+svm.rm =  c(svm.rm, coefs[abs(coefs) < 0.6])
+svm.rm = names(svm.rm)
+
+################################################################################
+
+#variable selection using random Forest
+
+##fit random forest model
+set.seed(123) #set seed to get the same results
+fit = randomForest(Cath ~ ., cad_data, scale=F)
+
+##get variable importance
+varimps = varImp(fit, scale=F)
+
+##convert varimps to dataframe
+imp <- data.frame(varimps)
+imp <- data.frame(overall = imp$Overall, names = rownames(imp))
+
+##get variables where variable importance < 0.6
+rf.rm = imp$names[imp$overall < 0.6]
+
+#################################################################################
+
+#variable selection using ROC
+
+##get variable importance
+set.seed(123) #set seed to get the same results
+roc_imp = filterVarImp(x = cad_data[,1:52], y=cad_data$Cath)
+
+##get variables to be removed
+roc.rm = rownames(roc_imp)[roc_imp$Cad < 0.6]
+
+
+################################################################################
+
+#variable selection using tree
+
+##fit tree model
+set.seed(123) #set seed to get the same results
+fit = rpart(Cath ~ ., cad_data)
+
+## get variable importance
+varimps = data.frame(varImp(fit, scale=F))
+
+##get variables to be removed
+tree.rm = rownames(varimps)[varimps$Overall < 0.6]
+
+################################################################################
+
+#Find variables to discard
+
+intersect1 = intersect(roc.rm, rf.rm)
+intersect2 = intersect(intersect1, svm.rm)
+intersect3 = intersect(intersect2, tree.rm)
+
+################################################################################
+# •	"Ex.Smoker" (removed from dataset) *
+# •	"CRF" (removed from dataset)        *   
+# •	 "CVA" (removed from dataset)        *      
+# •	"Airway.disease" (removed from dataset) *
+# •	“Thyroid.Disease” (removed from dataset)   *
+# •	"CHF" (Incorrectly identified as unimportant due to class imbalance)  *                 
+# •	"PR" (Incorrectly identified as unimportant due to data sparsity)      *                            
+# •	"Weak.Peripheral.Pulse" (Incorrectly identified as unimportant due to class imbalance) *                   
+# •	 "Lung.rales"    (Incorrectly identified as unimportant due to class imbalance) *
+# •	"LVH" (removed from dataset)   *
+# •	"Poor.R.Progression" (removed from dataset)   *
+# •	"BBB" (removed from dataset)   *
+# •	"Na" (removed from dataset)   *
+# •	"PLT" (removed from dataset)   *
+
+##################################################################################
+
+## discard variables that were found to be unimportant, only if they do no 
+## occur as a variable under the "symptom and examination" group of variables
+cad_data = subset(cad_data, select=-c(Ex.Smoker, CRF, CVA, Airway.disease, 
+                                      Thyroid.Disease, LVH, Poor.R.Progression, 
+                                      BBB, Na, PLT))
+
+## also discard variables that were discarded by:
+## https://www.sciencedirect.com/science/article/pii/S0169260713000801?via%3Dihub
+
+cad_data = cad_data %>% subset(select=-c(Atypical, Nonanginal, FBS, 
+                                         Diastolic.Murmur, Current.Smoker)) *
+
+##remaining independent variables
+ncol(cad_data)-1
+colnames(cad_data)
+
+```
+
+\newpage
+
+# 7. Convert multinomial features to binomial features
+
+Rule:
+If feature f is polynomial, change it to binomial by mapping the values having direct relationship to CAD, to 1 and others to 0. For example HB has three values: Low, Normal, and High. “Low” and “High” are mapped to the "1" group, and “Normal” is mapped to the "0" group. 
+
+```{r}
+
+#check data types
+str(cad_data)
+
+#################################################################################
+
+#Convert multinomial features to binomial features:
+        ##Rule: Normal, average and median classes are coded as 0. 
+        ##Extremes such as low and high classes are coded as 1 since
+        ##it has an effect on CAD
+
+##################################################################################
+
+#Length with 3 levels
+cad_data$Length = as.factor(ifelse(cad_data$Length  == "160 ≤ Length < 180", 0, 1))
+
+####################################################################################
+
+#BMI with 4 levels
+cad_data$BMI = as.factor(ifelse(cad_data$BMI == "Healthy", 0, 1))
+
+####################################################################################
+
+#PR with 3 levels
+cad_data$PR = as.factor( ifelse(cad_data$PR == "Normal", 0, 1))
+
+####################################################################################
+
+#CR with 3 levels
+cad_data$CR = as.factor(ifelse(cad_data$CR == "Normal", 0, 1))
+
+####################################################################################
+
+#BUN with 3 levels
+cad_data$BUN = as.factor(ifelse(cad_data$BUN == "Normal", 0, 1))
+
+####################################################################################
+
+#HB with 3 levels
+cad_data$HB = as.factor(ifelse(cad_data$HB == "Normal", 0, 1))
+
+####################################################################################
+
+#K with 3 levels
+cad_data$K = as.factor(ifelse(cad_data$K == "Normal", 0, 1))
+
+####################################################################################
+
+#WBC with 3 levels
+cad_data$WBC = as.factor(ifelse(cad_data$WBC == "Normal", 0, 1))
+
+####################################################################################
+
+#Neut with 3 levels
+cad_data$Neut = as.factor(ifelse(cad_data$Neut == "Normal", 0, 1))
+
+####################################################################################
+
+#VHD with 4 levels
+cad_data$VHD = as.factor(ifelse(cad_data$VHD == "N", 0, 1))
+
+#####################################################################################
+
+#BP with levels
+cad_data$BP = as.factor(ifelse(cad_data$BP == "Normal", 0, 1))
+
+#####################################################################################
+
+
+#BP with levels
+cad_data$Function.Class = as.factor(ifelse(cad_data$Function.Class == "Normal", 
+                                           0, 1))
+
+#####################################################################################
+
+#TG with 2 levels
+cad_data$TG = as.factor(ifelse(cad_data$TG == "Normal", 0, 1))
+
+#####################################################################################
+
+#LDL with 2 levels
+cad_data$LDL = as.factor(ifelse(cad_data$LDL == "Normal", 0, 1))
+
+#####################################################################################
+
+#HDL with 2 levels
+cad_data$HDL = as.factor(ifelse(cad_data$HDL == "Normal", 0, 1))
+
+#####################################################################################
+
+#ESR with 2 levels
+cad_data$ESR = as.factor(ifelse(cad_data$ESR == "Normal", 0, 1))
+
+#####################################################################################
+
+#EF with 2 levels
+cad_data$EF = as.factor(ifelse(cad_data$EF == "Normal", 0, 1))
+
+#####################################################################################
+
+#EF with 2 levels
+cad_data$Region.RWMA = as.factor(ifelse(cad_data$Region.RWMA == "Normal", 0, 1))
+
+#####################################################################################
+
+#Age with 2 levels
+cad_data$Age = as.factor(ifelse(cad_data$Age == "Normal", 0, 1))
+
+#####################################################################################
+
+#Sex with 2 levels. Female = 1 and male = 0
+cad_data$Sex = as.factor(ifelse(cad_data$Sex == "Fmale", 1, 0))
+
+#####################################################################################
+
+#recheck data types to see that they are binomial
+str(cad_data)
+
+```
+
+
+\newpage
+
+# 8. Association rule mining
+
+## i. Conversion of data to transaction data
+
+```{r}
+#recheck dim
+dim(cad_data)
+
+#convert data frame to transaction data frame
+trans <- as(cad_data, "transactions")
+
+```
+
+
+## ii. Exploratory data analysis on transaction data
+
+```{r}
+
+#inspect first 5 items
+set.seed = 123
+inspect(trans[1:5])
+
+#Checking the frequency of the first 5 items in transaction database
+set.seed = 123
+itemFrequency(trans[,1:5])
+
+#Frequency plot with items having a frequency of at  least 70%
+set.seed = 123
+itemFrequencyPlot(trans, support = 0.7, col=rainbow(length(trans)))
+
+
+#maximum frequency for the top 25 records
+set.seed = 123
+itemFrequencyPlot(trans, topN=25, type = "relative", col=rainbow(length(trans)))
+
+#Below is the visualization of tthe Sparse Matrix for first 25 transactions.
+set.seed = 123
+image(trans[1:25])
+
+```
+
+
+## 8.1 Objective 1: Use association rule mining methods to determine the features that are mostly associated with CAD.
+
+```{r}
+
+## Set RHS Cath = Cad 
+
+### ensure a maximum rule length of 4, so that MAX length of LHS = 3 and length of RHS = 1
+
+set.seed = 123
+rules<-apriori(data=trans, maxlen=4, parameter=list(supp=0.01,conf = 0.8), appearance =list(default="lhs",rhs="Cath=Cad"), control =list(verbose=F)) 
+
+#check number of rules
+rules
+
+# get redundant rules into a vector
+set.seed = 123
+redundant <- which (colSums (is.subset (rules, rules)) > 1)
+
+# remove redundant rules
+rules <- rules[-redundant]
+inspect(rules[1:5])
+
+#number of rules
+rules
+
+#summary of rules
+summary(rules)
+
+# sort rules by support, confidence, and lift
+rules<-sort(rules,decreasing=TRUE,by="support")
+inspect(rules[1:5])
+
+#write rules to file
+write.csv(as(rules, "data.frame"), paste0(path_to_figures_tables, 
+                                                            "\\objective1_rules_sorted_by_support.csv"))
+
+
+#plot network
+plot(head(rules, 5), method="graph",control=list(type="items",main=""))
+
+
+```
+
+### 8.1.1 Scatter plot of interesting rules
+
+```{r, echo=FALSE, warnings=FALSE,fig.width=8, fig.height=6}
+
+plot(rules,main="")  
+
+#Rules with high lift typically have low support. 
+#The most interesting rules reside where the confidence is high and support 
+#is low i.e., having large lift values
+
+```
+
+### 8.1.2 Plot graph-based visualisation
+
+```{r}
+
+#sort by confidence
+subrules <- head(sort(rules, by="confidence"), 5) #change head value
+inspect( subrules[1:5])
+
+
+#plot network
+plot(subrules, method="graph",control=list(type="items",main=""))
+
+
+
+```
+
+
+### 8.1.3 Grouped plot for all rules
+
+```{r}
+
+plot(rules, method="grouped") 
+
+```
+
+### 8.1.4 Interactive plot for all rules
+
+```{r}
+plot(rules, method = "graph", measure = "lift", shading = "confidence", engine = "htmlwidget")
+```
+
+### 8.1.5 Final most interesting rules
+
+```{r}
+
+# sort rules by lift
+rules_ordered_by_lift<-sort(rules,decreasing=TRUE,by="lift")  
+inspect(rules_ordered_by_lift[1:5])
+
+#write rules to file
+write.csv(as(rules_ordered_by_lift, "data.frame"), paste0(path_to_figures_tables, 
+                                                            "\\objective1_final_rules.csv"))
+
+# sort rules by confidence
+rules_ordered_by_confidence<-sort(rules,decreasing=TRUE,by="confidence")
+
+#assess by confidence
+inspect(rules_ordered_by_confidence[1:5])
+
+```
+
+\newpage
+
+## 8.2 Objective 2: Find any other interesting association rules.
+* Rules with high lift typically have low support.
+* The most interesting rules reside on the support/confidence border which can be clearly seen by a scatter plot.
+
+
+* Based on output from objective 1 above, DM is a highly associated with CAD. 
+* From theory, we know that diabetic individuals are at high risk of CAD. 
+* It is worth investigating the factors that are associated with DM.
+
+```{r apriori, fig.show= "hide", results = "hide"}
+
+##decrease minsup and increase confidence
+## keep increasing minlen until interesting associations cease to exist
+## choose minlen = 6 because minlen = 7 generates 0 rules
+
+set.seed = 123
+rules<-apriori(data=trans,parameter=list(supp=0.001,conf =0.9), 
+               control =list(verbose=F), target = "rules", 
+                appearance = list(default="lhs", rhs="DM=1"), minlen=6)
+
+####################################################################################
+
+#number of rules
+rules #554258 rules
+
+#view rules
+inspect(rules[1:5])
+
+#summary of rules
+summary(rules)
+
+####################################################################################
+
+# sort rules by lift
+rules_ordered_by_lift<-sort(rules,decreasing=TRUE,by="lift") 
+
+#show first few rules
+inspect(rules_ordered_by_lift[1:5])
+
+#save rules to csv
+##uncomment if required
+#write.csv(as(inspect(rules_ordered_by_lift[1:25]), "data.frame"), paste0(path_to_figures_tables,"\\objective2_final_rules.csv"))
+
+
+####################################################################################
+
+```
+
+
+### 8.2.1 Scatter plot of interesting rules
+
+```{r, echo=FALSE, warnings=FALSE,fig.width=8, fig.height=6}
+
+##Rules with high lift typically have low support. 
+##The most interesting rules reside where the confidence is high and support is low i.e., having large lift values
+
+
+##plot rules
+plot(rules, measure=c("support", "confidence"), shading="lift",control = list(col=rainbow(7))) 
+
+```
+
+
+### 8.2.2 Plot graph-based visualisation
+
+```{r}
+
+#sort by lift
+subrules2 <- head(sort(rules, by="confidence"), 5)
+inspect( subrules2[1:5])
+
+#plot network
+plot(subrules2, method="graph",control=list(type="items",main=""), lwd=4)
+
+
+```
+
