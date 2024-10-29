@@ -1,0 +1,6 @@
+# Abstract
+The aim of this project is to identify the important features associated with coronary artery disease (CAD), which may assist in the timely diagnosis of CAD. The objectives of this project are to: (1) use association rule mining methods to determine the features that are mostly associated with CAD and (2) to find any other interesting association rules.
+
+# Introduction
+Many people suffer from cardiovascular diseases, which has a detrimental effect on the global mortality rate. For this reason, accurate and timely diagnosis of coronary artery disease (CAD) is essential. Angiography was proposed as a method for CAD diagnoses. Angiography produces the most accurate results among other CAD diagnostic tools. Researchers are, therefore, seeking novel modalities for CAD diagnosis. This project assesses the CAD dataset, which contains angiography results and other measurements obtained from 303 patients. The data set also includes information on whether a patient had CAD or not.
+The data presented in this project has been previously analysed by R. Alizadehsani et al (2013) [1]. This project uses the methods outlined by R. Alizadehsani et al (2013) to determine the features that are mostly associated with CAD and identify some interesting association rules.
